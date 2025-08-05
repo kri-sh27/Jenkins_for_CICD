@@ -1,11 +1,7 @@
-Here’s your updated `README.md` file that combines the original GitHub Actions-based CI/CD setup with a **Jenkins-based pipeline** using a **self-hosted Ubuntu instance**, while **removing the YAML workflow part** and **adding Jenkins pipeline details** as requested:
-
----
-
 ````markdown
 # 🚀 Node.js Demo App - CI/CD Pipeline with Jenkins and Docker
 
-This project demonstrates a complete CI/CD pipeline setup using **Jenkins**, **Docker**, and a **self-hosted runner**. The pipeline builds and deploys a Node.js application to Docker Hub and runs it inside a Docker container.
+This project demonstrates a complete CI/CD pipeline setup using *Jenkins*, *Docker*, and a *self-hosted runner*. The pipeline builds and deploys a Node.js application to Docker Hub and runs it inside a Docker container.
 ````
 ## 📁 Project Structure
 
