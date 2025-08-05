@@ -27,7 +27,7 @@ pipeline{
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
                        sh "docker build -t zomatoapp ."
-                       sh "docker tag zomato krishnahogale/zomatoapp:latest "
+                       sh "docker tag zomatoapp krishnahogale/zomatoapp:latest "
                        sh "docker push krishnahogale/zomatoapp:latest "
                     }
                 }
