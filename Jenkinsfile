@@ -22,6 +22,13 @@ pipeline{
                 sh "npm install"
             }
         }
+
+          stage('Run tests') {
+            steps {
+                // Run tests
+                sh 'npm test'
+            }
+        }
          stage("Docker Build & Push"){
             steps{
                 script{
@@ -33,10 +40,24 @@ pipeline{
                 }
             }
         }
-        stage('Deploy to container'){
-     steps{
-            sh 'docker run -d --name zomatoapp -p 3000:3000 krishnahogale/zomatoapp:latest'
-          }
-      }
+    //     stage('Deploy to container'){
+    //  steps{
+    //         sh 'docker run -d --name zomatoapp -p 3000:3000 krishnahogale/zomatoapp:latest'
+    //       }
+    //   }
+    stage('Deploy to Container') {
+    steps {
+        script {
+            // Stop and remove existing container if it exists
+            sh '''
+            if [ $(docker ps -aq -f name=zomatoapp) ]; then
+              docker stop zomatoapp || true
+              docker rm zomatoapp || true
+            fi
+            docker run -d --name zomatoapp -p 3000:3000 krishnahogale/zomatoapp:latest
+            '''
+        }
+    }
+}
     }
 }
