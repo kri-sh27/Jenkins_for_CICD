@@ -13,7 +13,7 @@ pipeline{
         }
         stage('Checkout from Git'){
             steps{
-                git branch: 'main', url: 'https://github.com/kri-sh27/Zomato-Clone.git'
+                git branch: 'main', url: 'https://github.com/kri-sh27/Jenkins_for_CICD.git'
             }
         }
     
@@ -26,16 +26,16 @@ pipeline{
             steps{
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build -t zomato ."
-                       sh "docker tag zomato krishnahogale/zomato:latest "
-                       sh "docker push krishnahogale/zomato:latest "
+                       sh "docker build -t zomatoapp ."
+                       sh "docker tag zomato krishnahogale/zomatoapp:latest "
+                       sh "docker push krishnahogale/zomatoapp:latest "
                     }
                 }
             }
         }
         stage('Deploy to container'){
      steps{
-            sh 'docker run -d --name zomato -p 3000:3000 krishnahogale/zomato:latest'
+            sh 'docker run -d --name zomatoapp -p 3000:3000 krishnahogale/zomatoapp:latest'
           }
       }
     }
