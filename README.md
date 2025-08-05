@@ -1,186 +1,191 @@
+Here’s your updated `README.md` file that combines the original GitHub Actions-based CI/CD setup with a **Jenkins-based pipeline** using a **self-hosted Ubuntu instance**, while **removing the YAML workflow part** and **adding Jenkins pipeline details** as requested:
 
-
-```markdown
-# 🚀 Node.js Demo App - CI/CD Pipeline with GitHub Actions and Docker
-
-This project demonstrates a complete CI/CD pipeline setup using **GitHub Actions**, **Docker**, and a **self-hosted runner**. The pipeline builds and deploys a Node.js application to Docker Hub on every push to the `main` branch.
-```
 ---
 
+````markdown
+# 🚀 Node.js Demo App - CI/CD Pipeline with Jenkins and Docker
+
+This project demonstrates a complete CI/CD pipeline setup using **Jenkins**, **Docker**, and a **self-hosted runner**. The pipeline builds and deploys a Node.js application to Docker Hub and runs it inside a Docker container.
+````
 ## 📁 Project Structure
 
-``` bash
-
+```bash
 .
 ├── Dockerfile
-├── .github
-│   └── workflows
-│       └── main.yml
+├── Jenkinsfile
 ├── src/
 │   └── ... (App source code)
 ├── package.json
 └── README.md
-
-````
+```
 
 ---
 
 ## 🛠️ Step-by-Step Setup
 
-### 1. ✅ Created a Dockerfile
+### 1. ✅ Created an Ubuntu Instance and Connected via SSH
 
-```Dockerfile
-# Use Node.js 16 slim as the base image
-FROM node:16-slim
-
-# Set the working directory
-WORKDIR /app
-
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application code
-COPY . .
-
-# Build the React app
-RUN npm run build
-
-# Expose port 3000 (or the port your app is configured to listen on)
-EXPOSE 3000
-
-# Start your Node.js server (assuming it serves the React app)
-CMD ["npm", "start"]
-
-````
-
-> This Dockerfile sets up the environment to build and run the Node.js app.
-
----
-
-### 2. ✅ Created GitHub Actions Workflow (`main.yml`)
-
-Location: `.github/workflows/main.yml`
-
-```yaml
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm test
-      - name: Set up Docker Buildx # Add this step to set up Buildx
-        uses: docker/setup-buildx-action@v3 
-      - name: Log in to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push Docker image to Docker Hub
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:latest
-
+```bash
+ssh ubuntu@<instance-ip>
 ```
 
 ---
 
-### 3. ✅ Set Up Self-Hosted Runner
+### 2. ✅ Installed Required Tools
 
-* Added a self-hosted runner in GitHub under **Settings → Actions → Runners**
-* Downloaded and configured runner on a remote Ubuntu machine:
-
-  ```bash
-  ./config.sh --url https://github.com/<user>/<repo> --token <token>
-  ./run.sh
-  ```
-
----
-
-### 4. ✅ Installed Docker on Self-Hosted Runner
+#### 📦 Java (Pre-requisite for Jenkins)
 
 ```bash
 sudo apt update
+sudo apt install openjdk-17-jdk -y
+```
+
+#### ⚙️ Installed Jenkins
+
+```bash
+wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+sudo sh -c 'echo deb https://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+sudo apt update
+sudo apt install jenkins -y
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+```
+
+#### 🐳 Installed Docker
+
+```bash
 sudo apt install docker.io -y
+```
+
+#### 🔓 Fixed Docker Permission Issue
+
+```bash
+sudo chmod 777 /var/run/docker.sock
 ```
 
 ---
 
-### 5. 🛠️ Fixed `docker.sock` Permission Issue
+### 3. ✅ Jenkins Configuration
 
-* Encountered the error:
+* Jenkins is accessible at: `http://<instance-ip>:8080`
+* Completed Jenkins initial setup
+* Installed required plugins:
 
-  ```
-  Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock
-  ```
+  * **NodeJS Plugin**
+  * **Docker Pipeline Plugin**
 
-* Fixed it using:
+---
 
-  ```bash
-  sudo chmod 666 /var/run/docker.sock
-  ```
+### 4. ✅ Added Webhook in GitHub
 
-> This allows the GitHub Actions runner to execute Docker commands.
+* GitHub → Settings → Webhooks → Added URL:
+  `http://<jenkins-ip>:8080/github-webhook/`
+  (Triggers build on each push to `main`)
+
+---
+
+### 5. ✅ Added Docker Credentials in Jenkins
+
+* Jenkins → Manage Credentials → DockerHub Credentials
+  (ID: `docker`)
+
+---
+
+### 6. ✅ Created Jenkins Pipeline
+
+**Jenkinsfile:**
+
+```groovy
+pipeline {
+    agent any
+    tools {
+        jdk 'java17'
+        nodejs 'node16'
+    }
+
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main', url: 'https://github.com/kri-sh27/Jenkins_for_CICD.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh 'docker build -t zomatoapp .'
+                        sh 'docker tag zomatoapp krishnahogale/zomatoapp:latest'
+                        sh 'docker push krishnahogale/zomatoapp:latest'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Container') {
+            steps {
+                sh 'docker run -d --name zomatoapp -p 3000:3000 krishnahogale/zomatoapp:latest'
+            }
+        }
+    }
+}
+```
 
 ---
 
 ## 📦 Output
 
-* On each push to `main`, the app is:
+On every code push to `main`:
 
-  1. Tested 
-  2. Dockerized
-  3. Pushed to DockerHub repository:
+1. Jenkins is triggered via webhook
+2. Code is cloned and dependencies are installed
+3. Docker image is built and pushed to DockerHub
+4. App is deployed as a running container on port `3000`
 
-     ```
-     ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPO }}:latest
-     ```
+
+<div align="center">
+  <img src="./output/webhook.png" alt="Logo" width="100%" height="100%">
+</div>
+
+<div align="center">
+  <img src="./output/success.png" alt="Logo" width="100%" height="100%">
+</div>
+
+<div align="center">
+  <img src="./output/deployed.png" alt="Logo" width="100%" height="100%">
+</div>
 
 ---
 
-## 🔐 GitHub Secrets Used
+## 🔐 Jenkins Credentials
 
-| Secret Name          | Description             |
-| -------------------- | ----------------------- |
-| `DOCKERHUB_USERNAME` | Your DockerHub username |
-| `DOCKERHUB_PASSWORD` | Your DockerHub password |
-| `DOCKERHUB_REPO`     | DockerHub repo name     |
+| Credential ID | Description           |
+| ------------- | --------------------- |
+| `docker`      | DockerHub credentials |
 
 ---
 
 ## ✅ Conclusion
 
-This setup helps automate build and deployment using GitHub Actions and Docker efficiently on a self-hosted runner.
+This setup efficiently automates the CI/CD workflow using Jenkins, Docker, and GitHub on a self-hosted runner with webhook-based triggers.
 
 ---
 
 ## 📎 References
 
-* [GitHub Actions Documentation](https://docs.github.com/en/actions)
-* [DockerHub](https://hub.docker.com/)
-* [Self-Hosted Runners](https://docs.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners)
-
-```
+* [Jenkins Documentation](https://www.jenkins.io/doc/)
+* [Docker Documentation](https://docs.docker.com/)
+* [Node.js](https://nodejs.org/)
+* [GitHub Webhooks](https://docs.github.com/en/webhooks)
